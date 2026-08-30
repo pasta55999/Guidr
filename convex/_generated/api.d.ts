@@ -10,13 +10,13 @@
 
 import type * as events from "../events.js";
 import type * as fixtures_ftaTaxInvoice from "../fixtures/ftaTaxInvoice.js";
-import type * as http from "../http.js";
 import type * as knowledge from "../knowledge.js";
 import type * as lessons from "../lessons.js";
 import type * as prompts from "../prompts.js";
-import type * as realtime from "../realtime.js";
 import type * as seed from "../seed.js";
 import type * as sessions from "../sessions.js";
+import type * as speech from "../speech.js";
+import type * as tutor from "../tutor.js";
 
 import type {
   ApiFromModules,
@@ -27,13 +27,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   events: typeof events;
   "fixtures/ftaTaxInvoice": typeof fixtures_ftaTaxInvoice;
-  http: typeof http;
   knowledge: typeof knowledge;
   lessons: typeof lessons;
   prompts: typeof prompts;
-  realtime: typeof realtime;
   seed: typeof seed;
   sessions: typeof sessions;
+  speech: typeof speech;
+  tutor: typeof tutor;
 }>;
 
 /**

@@ -5,12 +5,8 @@ import { useHighlight } from "../overlay/HighlightProvider";
 import { MicButton } from "../ui/MicButton";
 import { StatusPill } from "../ui/StatusPill";
 import { StepTracker } from "../ui/StepTracker";
-import { RealtimeProvider, useRealtime } from "../voice/RealtimeProvider";
-import {
-  buildResumeMessage,
-  buildStateMessage,
-  notifyAgent,
-} from "../voice/notifyAgent";
+import { VoiceProvider, useVoice } from "../voice/VoiceProvider";
+import { buildResumeMessage, buildStateMessage } from "../voice/notifyAgent";
 import type { TutorElementId } from "../contracts/elements";
 import type { LessonStateSnapshot } from "../contracts/session";
 import { useLessonSession } from "./useLessonSession";
@@ -27,39 +23,29 @@ export function LessonRuntime() {
     snapshotRef.current = snapshot;
   }, [snapshot]);
 
-  // On (re)connect, tell the tutor the persisted step so a refresh mid-lesson
+  // The opening turn carries the persisted step, so a refresh mid-lesson
   // resumes instead of restarting.
-  const onConnected = useCallback(
-    (send: (event: Record<string, unknown>) => void) => {
-      const current = snapshotRef.current;
-      if (!current) return;
-      notifyAgent(
-        send,
-        buildResumeMessage(
-          current.stepIndex,
-          current.totalSteps,
-          current.stepTitleEn,
-          current.targetElementId,
-          current.lessonCompleted,
-        ),
-      );
-    },
-    [],
-  );
+  const buildOpeningMessage = useCallback(() => {
+    const current = snapshotRef.current;
+    if (!current) return null;
+    return buildResumeMessage(
+      current.stepIndex,
+      current.totalSteps,
+      current.stepTitleEn,
+      current.targetElementId,
+      current.lessonCompleted,
+    );
+  }, []);
 
   return (
-    <RealtimeProvider
-      sessionId={sessionId}
-      handlers={handlers}
-      onConnected={onConnected}
-    >
+    <VoiceProvider handlers={handlers} buildOpeningMessage={buildOpeningMessage}>
       <LessonStage
         snapshot={snapshot}
         sessionId={sessionId}
         start={start}
         submitAction={submitAction}
       />
-    </RealtimeProvider>
+    </VoiceProvider>
   );
 }
 
@@ -76,19 +62,17 @@ function LessonStage({
   start,
   submitAction,
 }: LessonStageProps) {
-  const { status, micEnabled, setMicEnabled, connect, disconnect, send } =
-    useRealtime();
+  const voice = useVoice();
   const { clear } = useHighlight();
   const [pendingStart, setPendingStart] = useState(false);
 
-  // A session must exist before a token can be minted, so starting is two
-  // steps: create the Convex session, then connect once its id has propagated.
+  // A Convex session must exist before the tutor can be told where we are.
   useEffect(() => {
-    if (pendingStart && sessionId && status === "idle") {
+    if (pendingStart && sessionId && snapshot && voice.status === "idle") {
       setPendingStart(false);
-      void connect();
+      void voice.start();
     }
-  }, [pendingStart, sessionId, status, connect]);
+  }, [pendingStart, sessionId, snapshot, voice]);
 
   const handleStart = useCallback(async () => {
     if (!sessionId) await start();
@@ -98,7 +82,7 @@ function LessonStage({
   /**
    * THE DETERMINISTIC LOOP.
    * Learner acts -> Convex judges and persists -> the tutor is TOLD the result.
-   * The model is never asked whether the learner was right.
+   * The tutor is never asked whether the learner was right.
    */
   const handleTutorAction = useCallback(
     async (elementId: TutorElementId, value?: string) => {
@@ -106,20 +90,18 @@ function LessonStage({
       const total = snapshot?.totalSteps ?? 5;
 
       const result = await submitAction(elementId, value);
-      if (!result) return;
-
-      if (result.outcome === "already_done") return;
+      if (!result || result.outcome === "already_done") return;
       if (result.outcome === "correct") clear();
 
-      notifyAgent(
-        send,
+      await voice.sendUserText(
         buildStateMessage(result, elementId, total, expected),
+        { visible: false },
       );
     },
-    [snapshot, submitAction, send, clear],
+    [snapshot, submitAction, clear, voice],
   );
 
-  const live = status === "live" || status === "reconnecting";
+  const active = voice.status !== "idle" && voice.status !== "error";
 
   return (
     <div className="lr-root">
@@ -128,28 +110,38 @@ function LessonStage({
           <StepTracker
             stepIndex={snapshot?.stepIndex ?? 0}
             totalSteps={snapshot?.totalSteps ?? 5}
-            stepTitleEn={snapshot?.stepTitleEn ?? "Press Start to begin"}
+            stepTitleEn={snapshot?.stepTitleEn ?? "Press Start talking to begin"}
             stepTitleAr={snapshot?.stepTitleAr ?? ""}
             lessonCompleted={snapshot?.lessonCompleted ?? false}
           />
         </div>
         <div className="lr-bar-right">
-          <StatusPill status={status} />
+          {voice.usingFallbackStt && (
+            <span className="lr-note" title="Munsit unavailable — using the browser engine">
+              fallback STT
+            </span>
+          )}
+          <StatusPill status={voice.status} />
           <MicButton
-            status={status}
-            micEnabled={micEnabled}
-            onStart={() => {
-              if (!live) void handleStart();
-              else setMicEnabled(!micEnabled);
-            }}
-            onStop={disconnect}
+            status={voice.status}
+            micEnabled
+            onStart={() => void handleStart()}
+            onStop={voice.stop}
           />
         </div>
       </header>
 
+      {voice.error && <div className="lr-error">{voice.error}</div>}
+
       <main className="lr-stage">
         <InvoiceApp onTutorAction={handleTutorAction} />
       </main>
+
+      {active && (
+        <div className="lr-level" aria-hidden="true">
+          <span style={{ width: `${Math.round(voice.level * 100)}%` }} />
+        </div>
+      )}
 
       <HighlightOverlay />
     </div>

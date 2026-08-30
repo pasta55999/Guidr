@@ -38,12 +38,17 @@ export interface RecordClickResult {
   } | null;
 }
 
+/**
+ * Voice pipeline state. The tutor is a three-stage loop
+ * (Munsit STT -> Claude -> Munsit/browser TTS), so the states describe which
+ * stage is active rather than a connection lifecycle.
+ */
 export type TutorStatus =
   | "idle"
-  | "requesting-token"
-  | "connecting"
-  | "live"
-  | "reconnecting"
+  | "starting"
+  | "listening"
+  | "thinking"
+  | "speaking"
   | "error";
 
 export interface HighlightState {

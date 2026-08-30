@@ -123,19 +123,25 @@
   background: currentColor;
 }
 
-.ui-pill--live {
+.ui-pill--listening {
   border-color: #a7ddc8;
   background: #ecfdf5;
   color: #0a6c4d;
 }
 
-.ui-pill--live .ui-pill-dot {
+.ui-pill--listening .ui-pill-dot,
+.ui-pill--speaking .ui-pill-dot {
   animation: ui-blink 1.4s ease-in-out infinite;
 }
 
-.ui-pill--connecting,
-.ui-pill--requesting-token,
-.ui-pill--reconnecting {
+.ui-pill--speaking {
+  border-color: #b6cdea;
+  background: #eef4fc;
+  color: #17457c;
+}
+
+.ui-pill--starting,
+.ui-pill--thinking {
   border-color: #f2d8a8;
   background: #fdf8ee;
   color: #8a5a06;

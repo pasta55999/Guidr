@@ -27,6 +27,38 @@
   flex-shrink: 0;
 }
 
+.lr-note {
+  padding: 3px 9px;
+  border: 1px solid #f2d8a8;
+  border-radius: 999px;
+  background: #fdf8ee;
+  color: #8a5a06;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lr-error {
+  padding: 8px 20px;
+  background: #fdf2f1;
+  border-bottom: 1px solid #f0c4c0;
+  color: #b42318;
+  font-size: 12.5px;
+}
+
+/* Mic level, so the learner can see they are being heard. */
+.lr-level {
+  height: 4px;
+  background: #e3e8ef;
+}
+
+.lr-level > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #1d5da6, #0f766e);
+  transition: width 90ms linear;
+}
+
 .lr-stage {
   flex: 1;
   min-height: 0;

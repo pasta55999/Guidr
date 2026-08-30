@@ -4,12 +4,12 @@ import type { TutorStatus } from "../contracts/session";
 import "./ui.css";
 
 const LABELS: Record<TutorStatus, string> = {
-  idle: "Not connected",
-  "requesting-token": "Authorising…",
-  connecting: "Connecting…",
-  live: "Tutor live",
-  reconnecting: "Reconnecting…",
-  error: "Connection error",
+  idle: "Not started",
+  starting: "Starting…",
+  listening: "Listening",
+  thinking: "Thinking…",
+  speaking: "Tutor speaking",
+  error: "Voice error",
 };
 
 export function StatusPill({ status }: { status: TutorStatus }) {

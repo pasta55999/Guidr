@@ -38,10 +38,10 @@ const FAKE_STEPS = [
 
 const STATUSES: TutorStatus[] = [
   "idle",
-  "requesting-token",
-  "connecting",
-  "live",
-  "reconnecting",
+  "starting",
+  "listening",
+  "thinking",
+  "speaking",
   "error",
 ];
 
@@ -58,7 +58,7 @@ function PlaygroundBody() {
   const [style, setStyle] = useState<HighlightStyle>("cursor");
   const [rtl, setRtl] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
-  const [status, setStatus] = useState<TutorStatus>("live");
+  const [status, setStatus] = useState<TutorStatus>("listening");
   const [log, setLog] = useState<string[]>([]);
 
   const push = useCallback((line: string) => {
@@ -111,7 +111,7 @@ function PlaygroundBody() {
           <MicButton
             status={status}
             micEnabled
-            onStart={() => setStatus("live")}
+            onStart={() => setStatus("listening")}
             onStop={() => setStatus("idle")}
           />
         </div>

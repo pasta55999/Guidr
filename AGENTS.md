@@ -44,7 +44,9 @@ blocks install scripts by default and the Convex CLI bundler needs it.
 
 | Concern | Owner |
 |---|---|
-| Speech, tone, language mirroring, hints | OpenAI Realtime (browser WebRTC) |
+| Arabic / code-switched speech recognition | Munsit `munsit-en-ar` via `convex/speech.ts:transcribe` |
+| Reasoning, tone, language mirroring, tool calls | Claude Messages API via `convex/tutor.ts:respond` |
+| Speech output | Munsit Faseeh (Arabic) / browser `SpeechSynthesis` (English) |
 | "Was that click correct? What step are we on?" | `convex/sessions.ts:recordClick` — deterministic |
 | Pixel position of an element | `src/overlay/*`, via `[data-tutor-id]` + `getBoundingClientRect` |
 | Durable progress / lessons / knowledge | Convex tables |
@@ -56,6 +58,32 @@ Consequences that must not be undone:
 - No tool schema accepts a number that could be an x/y coordinate.
 - Progress is read from a Convex query, never mirrored into React state.
 - `lookup_docs` reads Convex only. Context.dev is **never** called on a voice turn.
+- Every `tool_use` must be answered by a `tool_result` in the immediately following
+  user message — Anthropic errors otherwise, so `runToolUse` never throws.
+
+## Voice pipeline
+
+Three stages, orchestrated by `src/voice/useVoiceLoop.ts`:
+
+1. **Capture** (`src/voice/mic.ts`) — raw PCM via `ScriptProcessorNode`, WAV encoded
+   in-browser. WAV avoids any container/codec negotiation with Munsit, and the same
+   sample buffer provides the RMS used for silence-based turn detection. The mic is
+   paused while the tutor speaks so we never transcribe our own audio.
+2. **Understand + reason** — WAV → `speech.transcribe` (Munsit) → text → appended to
+   the message list → `tutor.respond` (Claude, with tools) → tool loop in the browser.
+3. **Speak** (`src/voice/speak.ts`) — routed by script: any Arabic → Munsit Faseeh
+   (`dialect: emirati`), which keeps mixed Arabic-English in a single voice and so
+   preserves intra-sentence code-switching; pure English → browser `SpeechSynthesis`.
+
+Faseeh is **Arabic-only** — do not route English text to it.
+
+Fallbacks so the demo cannot hard-fail: after 2 consecutive Munsit STT failures the
+loop switches to the browser's `SpeechRecognition` (`usingFallbackStt` shows in the
+UI); if Munsit TTS fails, speech falls back to `SpeechSynthesis`.
+
+Why the API keys are proxied through Convex: Munsit has no ephemeral-token mechanism,
+and its browser WebSocket auth requires the raw key in the URL. Server-side hops are
+the only way to keep the keys private.
 
 ## Frozen files
 
@@ -68,20 +96,26 @@ must run in Convex's V8 isolate. Anything touching `document` goes in `elements.
 
 ## Secrets
 
-`OPENAI_API_KEY`, `OPENAI_REALTIME_MODEL` and `CONTEXT_DEV_API_KEY` live **only** in
+`ANTHROPIC_API_KEY`, `MUNSIT_API_KEY` and `CONTEXT_DEV_API_KEY` live **only** in
 Convex env vars (`npx convex env set`). Never in `.env*`, never `VITE_`-prefixed —
 that prefix inlines a value into the browser bundle. `.env*` is gitignored except
-`.env.example`. The ephemeral-token HTTP action returns only `{ value, expiresAt }`.
+`.env.example`. No secret is ever returned to the browser by any action.
+
+Optional overrides: `ANTHROPIC_MODEL` (default `claude-sonnet-5`; `claude-haiku-4-5-20251001`
+is the latency fallback), `MUNSIT_STT_MODEL` (default `munsit-en-ar`),
+`MUNSIT_VOICE_ID`, `MUNSIT_DIALECT` (default `emirati`).
+
+Run `npx convex run speech:listVoices` to discover valid `voice_id` values.
 
 ## File ownership (parallel sessions)
 
 | Area | Files |
 |---|---|
 | Convex data | `convex/{lessons,sessions,events,seed}.ts` |
-| Voice/Realtime | `convex/{realtime,http,prompts}.ts`, `src/voice/*` |
+| Voice | `convex/{tutor,speech,prompts}.ts`, `src/voice/*` |
 | Context.dev knowledge | `convex/knowledge.ts`, `convex/fixtures/*` |
 | Simulated app + overlay | `src/app/*`, `src/overlay/*`, `src/ui/*` |
-| Integration | `src/App.tsx`, `src/lesson/*` |
+| Integration | `src/App.tsx`, `src/Root.tsx`, `src/lesson/*` |
 
 Shared/no-touch: `package.json`, `convex/schema.ts`, `src/contracts/*`.
 

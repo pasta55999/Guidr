@@ -1,30 +1,32 @@
 import type { ToolHandlerMap, ToolName } from "../contracts/tools";
 import { TOOL_NAMES } from "../contracts/tools";
 
-/** Shape of the Realtime `response.function_call_arguments.done` server event. */
-export interface RealtimeFunctionCall {
+/** Anthropic tool_use content block. */
+export interface ToolUseBlock {
+  type: "tool_use";
+  id: string;
   name: string;
-  call_id: string;
-  arguments: string;
+  input: unknown;
 }
 
-export type SendEvent = (event: Record<string, unknown>) => void;
+/** Anthropic tool_result content block. */
+export interface ToolResultBlock {
+  type: "tool_result";
+  tool_use_id: string;
+  content: string;
+  is_error?: boolean;
+}
 
-/** Tools that must never take longer than this before we answer the model anyway. */
 const WATCHDOG_MS = 2500;
 
 function isToolName(name: string): name is ToolName {
   return (TOOL_NAMES as readonly string[]).includes(name);
 }
 
-async function withWatchdog<T>(
-  work: Promise<T>,
-  fallback: T,
-  ms = WATCHDOG_MS,
-): Promise<T> {
+async function withWatchdog<T>(work: Promise<T>, fallback: T): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const guard = new Promise<T>((resolve) => {
-    timer = setTimeout(() => resolve(fallback), ms);
+    timer = setTimeout(() => resolve(fallback), WATCHDOG_MS);
   });
   try {
     return await Promise.race([work, guard]);
@@ -34,65 +36,53 @@ async function withWatchdog<T>(
 }
 
 /**
- * Runs a tool call and reports the result back to the model.
+ * Executes one tool call and always returns a tool_result block.
  *
- * The single most important property here: a `function_call_output` is ALWAYS
- * sent — on success, on throw, on unknown tool name, on bad JSON, and on
- * timeout. If we ever fail to send one, the model waits forever and the demo
- * dies mid-sentence. Nothing in this function is allowed to reject.
- *
- * The output must be sent as its own conversation.item.create and followed by a
- * separate response.create; inlining it into response.create makes the API
- * reject the call_id.
+ * A tool_result is produced on success, on throw, on unknown tool name and on
+ * timeout. Anthropic requires every tool_use to be answered by a tool_result in
+ * the very next user message, so a missing one is an API error, not just a
+ * stalled tutor. Nothing here is allowed to reject.
  */
-export async function dispatchToolCall(
-  call: RealtimeFunctionCall,
+export async function runToolUse(
+  block: ToolUseBlock,
   handlers: ToolHandlerMap,
-  send: SendEvent,
   onLog?: (message: string, detail?: unknown) => void,
-): Promise<void> {
+): Promise<ToolResultBlock> {
   let output: unknown;
+  let isError = false;
 
   try {
-    if (!isToolName(call.name)) {
-      output = { ok: false, error: `Unknown tool: ${call.name}` };
+    if (!isToolName(block.name)) {
+      output = { ok: false, error: `Unknown tool: ${block.name}` };
+      isError = true;
     } else {
-      let args: unknown = {};
-      try {
-        args = call.arguments ? JSON.parse(call.arguments) : {};
-      } catch {
-        args = {};
-      }
-
-      const handler = handlers[call.name] as (a: unknown) => Promise<unknown>;
+      const handler = handlers[block.name] as (a: unknown) => Promise<unknown>;
+      const args = (block.input ?? {}) as unknown;
       output = await withWatchdog(
-        Promise.resolve(handler(args)).catch((error: unknown) => ({
-          ok: false,
-          error: error instanceof Error ? error.message : "Tool failed",
-        })),
+        Promise.resolve(handler(args)).catch((error: unknown) => {
+          isError = true;
+          return {
+            ok: false,
+            error: error instanceof Error ? error.message : "Tool failed",
+          };
+        }),
         { ok: false, error: "Tool timed out" },
       );
     }
   } catch (error) {
+    isError = true;
     output = {
       ok: false,
       error: error instanceof Error ? error.message : "Tool dispatch failed",
     };
   }
 
-  onLog?.(`tool ${call.name}`, output);
+  onLog?.(`tool ${block.name}`, output);
 
-  try {
-    send({
-      type: "conversation.item.create",
-      item: {
-        type: "function_call_output",
-        call_id: call.call_id,
-        output: JSON.stringify(output),
-      },
-    });
-    send({ type: "response.create" });
-  } catch (error) {
-    onLog?.("failed to send tool output", error);
-  }
+  return {
+    type: "tool_result",
+    tool_use_id: block.id,
+    content: JSON.stringify(output),
+    ...(isError ? { is_error: true } : {}),
+  };
 }

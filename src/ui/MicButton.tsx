@@ -18,14 +18,15 @@ export function MicButton({
   onStart,
   onStop,
 }: MicButtonProps) {
-  const connecting = status === "requesting-token" || status === "connecting";
-  const active = status === "live" || status === "reconnecting";
+  const connecting = status === "starting";
+  const active =
+    status === "listening" || status === "thinking" || status === "speaking";
   const label = active
-    ? "End session"
+    ? "End lesson"
     : connecting
-      ? "Connecting…"
+      ? "Starting…"
       : status === "error"
-        ? "Retry session"
+        ? "Retry"
         : "Start talking";
 
   return (

@@ -1,12 +1,11 @@
 import { ELEMENT_REGISTRY, type TutorElementId } from "../contracts/elements";
 import type { RecordClickResult } from "../contracts/session";
-import type { SendEvent } from "./toolDispatcher";
 
-// The reverse channel: deterministic application state -> model.
+// The reverse channel: deterministic application state -> tutor.
 //
-// This is how "learner clicked the right thing" reaches the tutor. It is NOT a
-// tool: the model cannot invoke it, it can only receive it. That asymmetry is
-// what stops the model from ever declaring success on its own.
+// These strings are appended to the conversation as user-role messages. They are
+// NOT a tool: the tutor cannot invoke them, it can only receive them. That
+// asymmetry is what stops it from ever declaring success on its own.
 
 const PREFIX = "[LESSON_STATE]";
 
@@ -51,20 +50,7 @@ export function buildStateMessage(
   );
 }
 
-/** Push a state update and ask the tutor to speak about it. */
-export function notifyAgent(send: SendEvent, text: string): void {
-  send({
-    type: "conversation.item.create",
-    item: {
-      type: "message",
-      role: "system",
-      content: [{ type: "input_text", text }],
-    },
-  });
-  send({ type: "response.create" });
-}
-
-/** Sent right after (re)connecting so the tutor resumes at the persisted step. */
+/** Sent when the lesson starts or resumes, so the tutor picks up the persisted step. */
 export function buildResumeMessage(
   stepIndex: number,
   totalSteps: number,
