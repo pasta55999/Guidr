@@ -23,6 +23,19 @@ export interface SpeakOptions {
   synthesize: SynthesizeFn;
   onLog?: (message: string, detail?: unknown) => void;
   signal?: { cancelled: boolean };
+  /** Fired when the browser blocks playback for want of a user gesture. */
+  onAudioBlocked?: () => void;
+}
+
+/** Detect the language of a learner utterance so the tutor can be told explicitly. */
+export function detectLanguage(text: string): "en" | "ar" | "mixed" {
+  const arabic = hasArabic(text);
+  // Two or more Latin words alongside Arabic counts as genuine code-switching;
+  // a single stray token is usually a UI label or an STT artefact.
+  const latinWords = text.match(/[A-Za-z]{2,}/g) ?? [];
+  if (arabic && latinWords.length >= 2) return "mixed";
+  if (arabic) return "ar";
+  return "en";
 }
 
 function base64ToBlob(base64: string, mimeType: string): Blob {
@@ -34,7 +47,7 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 
 let activeAudio: HTMLAudioElement | null = null;
 
-function playBlob(blob: Blob): Promise<void> {
+function playBlob(blob: Blob, onBlocked?: () => void): Promise<void> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
@@ -46,7 +59,14 @@ function playBlob(blob: Blob): Promise<void> {
     };
     audio.onended = done;
     audio.onerror = done;
-    void audio.play().catch(done);
+    void audio.play().catch((error: unknown) => {
+      // Autoplay policy: without a prior user gesture the browser refuses to
+      // play. Surface it instead of silently dropping the tutor's speech.
+      if (error instanceof Error && error.name === "NotAllowedError") {
+        onBlocked?.();
+      }
+      done();
+    });
   });
 }
 
@@ -79,7 +99,7 @@ export function stopSpeaking(): void {
 
 export async function speak(
   text: string,
-  { synthesize, onLog, signal }: SpeakOptions,
+  { synthesize, onLog, signal, onAudioBlocked }: SpeakOptions,
 ): Promise<void> {
   const clean = text.trim();
   if (!clean) return;
@@ -93,7 +113,10 @@ export async function speak(
   if (signal?.cancelled) return;
 
   if (result.ok && result.audioBase64) {
-    await playBlob(base64ToBlob(result.audioBase64, result.mimeType ?? "audio/wav"));
+    await playBlob(
+      base64ToBlob(result.audioBase64, result.mimeType ?? "audio/wav"),
+      onAudioBlocked,
+    );
     return;
   }
 

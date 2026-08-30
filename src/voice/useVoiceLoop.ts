@@ -9,7 +9,8 @@ import {
   isBrowserSttAvailable,
   type BrowserSttController,
 } from "./browserStt";
-import { speak, stopSpeaking } from "./speak";
+import { detectLanguage, speak, stopSpeaking } from "./speak";
+import { languageDirective, type LearnerLanguage } from "./notifyAgent";
 import { runToolCall, type ToolCall } from "./toolDispatcher";
 
 /** OpenAI-style chat message (OpenRouter fronts Claude with this shape). */
@@ -50,6 +51,8 @@ export function useVoiceLoop({
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [usingFallbackStt, setUsingFallbackStt] = useState(false);
+  const [learnerLanguage, setLearnerLanguage] = useState<LearnerLanguage>("en");
+  const [audioBlocked, setAudioBlocked] = useState(false);
 
   const messagesRef = useRef<ChatMessage[]>([]);
   const handlersRef = useRef(handlers);
@@ -59,6 +62,7 @@ export function useVoiceLoop({
   const busyRef = useRef(false);
   const activeRef = useRef(false);
   const sttFailuresRef = useRef(0);
+  const languageRef = useRef<LearnerLanguage>("en");
 
   useEffect(() => {
     handlersRef.current = handlers;
@@ -110,7 +114,11 @@ export function useVoiceLoop({
         if (spoken) {
           pushLine("tutor", spoken);
           setStatus("speaking");
-          await speak(spoken, { synthesize, onLog: console.debug });
+          await speak(spoken, {
+            synthesize,
+            onLog: console.debug,
+            onAudioBlocked: () => setAudioBlocked(true),
+          });
         }
 
         if (toolCalls.length === 0) break;
@@ -142,15 +150,33 @@ export function useVoiceLoop({
     }
   }, [respond, synthesize, pushLine]);
 
-  /** Append a learner utterance (or a [LESSON_STATE] update) and let the tutor reply. */
+  /**
+   * Append a learner utterance (visible) or a [LESSON_STATE] update (hidden),
+   * then let the tutor reply.
+   *
+   * A learner utterance sets the language, because it is real evidence of what
+   * they are speaking. Automated notes are always English, so they must not — but
+   * they DO carry an explicit directive naming the current language, otherwise
+   * their English wording drags the tutor's replies back into English.
+   */
   const sendUserText = useCallback(
     async (text: string, { visible = true }: { visible?: boolean } = {}) => {
       const clean = text.trim();
       if (!clean || !activeRef.current) return;
-      if (visible) pushLine("learner", clean);
+
+      let payload = clean;
+      if (visible) {
+        const detected = detectLanguage(clean);
+        languageRef.current = detected;
+        setLearnerLanguage(detected);
+        pushLine("learner", clean);
+      } else {
+        payload = `${clean}${languageDirective(languageRef.current)}`;
+      }
+
       messagesRef.current = [
         ...messagesRef.current,
-        { role: "user", content: clean },
+        { role: "user", content: payload },
       ];
       await runTutorTurn();
     },
@@ -244,12 +270,24 @@ export function useVoiceLoop({
 
   useEffect(() => stop, [stop]);
 
+  /** Called from a click to satisfy the browser's autoplay gesture requirement. */
+  const unlockAudio = useCallback(() => {
+    setAudioBlocked(false);
+    if ("speechSynthesis" in window) {
+      // Speaking an empty utterance is enough to mark the page as user-activated.
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+    }
+  }, []);
+
   return {
     status,
     error,
     level,
     transcript,
     usingFallbackStt,
+    learnerLanguage,
+    audioBlocked,
+    unlockAudio,
     start,
     stop,
     sendUserText,

@@ -9,6 +9,32 @@ import type { RecordClickResult } from "../contracts/session";
 
 const PREFIX = "[LESSON_STATE]";
 
+export type LearnerLanguage = "en" | "ar" | "mixed";
+
+/**
+ * Every [LESSON_STATE] message is necessarily written in English, and those
+ * English directives accumulate and drag the tutor's replies back to English.
+ * So we detect the learner's language from their speech and state the
+ * requirement explicitly on every turn rather than relying on inference.
+ */
+export function languageDirective(language: LearnerLanguage): string {
+  switch (language) {
+    case "ar":
+      return (
+        " The learner is speaking ARABIC. Reply in Arabic only. This instruction" +
+        " is in English purely for your benefit — do not answer in English."
+      );
+    case "mixed":
+      return (
+        " The learner is mixing Arabic and English. Reply in the same mixed" +
+        " Gulf-workplace style, mainly Arabic with English UI labels kept in" +
+        " English. Do not answer in English only."
+      );
+    case "en":
+      return " The learner is speaking ENGLISH. Reply in English.";
+  }
+}
+
 function labelOf(elementId: string): string {
   return elementId in ELEMENT_REGISTRY
     ? ELEMENT_REGISTRY[elementId as TutorElementId].labelEn

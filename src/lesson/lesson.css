@@ -38,6 +38,30 @@
   white-space: nowrap;
 }
 
+.lr-lang {
+  padding: 3px 10px;
+  border: 1px solid #b6cdea;
+  border-radius: 999px;
+  background: #eef4fc;
+  color: #17457c;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lr-unlock {
+  display: block;
+  width: 100%;
+  padding: 10px 20px;
+  border: 0;
+  border-bottom: 1px solid #f2d8a8;
+  background: #fdf8ee;
+  color: #8a5a06;
+  font: 600 13px/1.4 system-ui, "Segoe UI", Roboto, sans-serif;
+  text-align: center;
+  cursor: pointer;
+}
+
 .lr-error {
   padding: 8px 20px;
   background: #fdf2f1;
