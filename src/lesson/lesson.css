@@ -1,0 +1,39 @@
+.lr-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.lr-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 20px;
+  background: #fff;
+  border-bottom: 1px solid #dfe3ea;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+
+.lr-bar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.lr-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.lr-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.lr-stage > * {
+  flex: 1;
+  min-width: 0;
+}
