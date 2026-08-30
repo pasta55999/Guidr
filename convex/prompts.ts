@@ -72,64 +72,71 @@ usually because a menu still needs to be opened. Tell the learner what to open f
 Open the lesson by greeting the learner briefly and immediately teaching step one.
 `.trim();
 
-/** Anthropic Messages API tool definitions. */
+/**
+ * Tool definitions in OpenAI function-calling format, which is what OpenRouter
+ * expects (it fronts Claude with an OpenAI-compatible API).
+ */
 export const TUTOR_TOOLS = [
   {
-    name: "highlight_element",
-    description:
-      "Visually highlight a control on screen and animate a cursor to it so the learner can see exactly where to click. Call this every time you ask the learner to interact with something. This does NOT click the control and does NOT advance the lesson.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        elementId: {
-          type: "string",
-          enum: [...HIGHLIGHTABLE_ELEMENT_IDS],
-          description: "Semantic id of the control to point at.",
+    type: "function" as const,
+    function: {
+      name: "highlight_element",
+      description:
+        "Visually highlight a control on screen and animate a cursor to it so the learner can see exactly where to click. Call this every time you ask the learner to interact with something. This does NOT click the control and does NOT advance the lesson.",
+      parameters: {
+        type: "object",
+        properties: {
+          elementId: {
+            type: "string",
+            enum: [...HIGHLIGHTABLE_ELEMENT_IDS],
+            description: "Semantic id of the control to point at.",
+          },
+          style: {
+            type: "string",
+            enum: ["cursor", "pulse"],
+            description:
+              "cursor animates a pointer to the control (default); pulse only rings it.",
+          },
         },
-        style: {
-          type: "string",
-          enum: ["cursor", "pulse"],
-          description:
-            "cursor animates a pointer to the control (default); pulse only rings it.",
-        },
+        required: ["elementId"],
       },
-      required: ["elementId"],
     },
   },
   {
-    name: "clear_highlight",
-    description:
-      "Remove any highlight from the screen, for example while answering a general question.",
-    input_schema: {
-      type: "object" as const,
-      properties: {},
-      required: [],
+    type: "function" as const,
+    function: {
+      name: "clear_highlight",
+      description:
+        "Remove any highlight from the screen, for example while answering a general question.",
+      parameters: { type: "object", properties: {}, required: [] },
     },
   },
   {
-    name: "get_lesson_state",
-    description:
-      "Read the learner's authoritative current progress: which step they are on, the total number of steps, and which control that step expects. Use this if you are unsure where you are.",
-    input_schema: {
-      type: "object" as const,
-      properties: {},
-      required: [],
+    type: "function" as const,
+    function: {
+      name: "get_lesson_state",
+      description:
+        "Read the learner's authoritative current progress: which step they are on, the total number of steps, and which control that step expects. Use this if you are unsure where you are.",
+      parameters: { type: "object", properties: {}, required: [] },
     },
   },
   {
-    name: "lookup_docs",
-    description:
-      "Search official UAE Federal Tax Authority guidance on tax invoices for facts to answer a learner's question or give a grounded hint. Use it for questions about TRN, VAT, AED amounts, required invoice fields or simplified tax invoices. Always query in English.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        query: {
-          type: "string",
-          description:
-            "What to look up, in English, e.g. 'is the supplier TRN required on a tax invoice'.",
+    type: "function" as const,
+    function: {
+      name: "lookup_docs",
+      description:
+        "Search official UAE Federal Tax Authority guidance on tax invoices for facts to answer a learner's question or give a grounded hint. Use it for questions about TRN, VAT, AED amounts, required invoice fields or simplified tax invoices. Always query in English.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "What to look up, in English, e.g. 'is the supplier TRN required on a tax invoice'.",
+          },
         },
+        required: ["query"],
       },
-      required: ["query"],
     },
   },
 ];

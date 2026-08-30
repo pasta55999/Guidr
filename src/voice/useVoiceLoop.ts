@@ -10,12 +10,14 @@ import {
   type BrowserSttController,
 } from "./browserStt";
 import { speak, stopSpeaking } from "./speak";
-import { runToolUse, type ToolUseBlock } from "./toolDispatcher";
+import { runToolCall, type ToolCall } from "./toolDispatcher";
 
-/** Anthropic message. Content is either a plain string or content blocks. */
-interface ClaudeMessage {
-  role: "user" | "assistant";
-  content: string | Array<Record<string, unknown>>;
+/** OpenAI-style chat message (OpenRouter fronts Claude with this shape). */
+interface ChatMessage {
+  role: "user" | "assistant" | "tool";
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
 }
 
 export interface TranscriptLine {
@@ -49,7 +51,7 @@ export function useVoiceLoop({
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [usingFallbackStt, setUsingFallbackStt] = useState(false);
 
-  const messagesRef = useRef<ClaudeMessage[]>([]);
+  const messagesRef = useRef<ChatMessage[]>([]);
   const handlersRef = useRef(handlers);
   const openingRef = useRef(buildOpeningMessage);
   const micRef = useRef<MicController | null>(null);
@@ -75,9 +77,9 @@ export function useVoiceLoop({
   /**
    * One reasoning turn, including the tool loop.
    *
-   * Anthropic requires every tool_use block to be answered by a tool_result in
-   * the immediately following user message, so tool rounds must be sequential
-   * and complete — we never drop one.
+   * Every tool_call must be answered by a matching tool message before the next
+   * request, or the API rejects the conversation — so tool rounds are
+   * sequential and we never drop one.
    */
   const runTutorTurn = useCallback(async () => {
     if (!activeRef.current) return;
@@ -91,21 +93,17 @@ export function useVoiceLoop({
         const result = await respond({ messages: messagesRef.current });
         if (!activeRef.current) return;
 
-        const blocks = result.content ?? [];
+        const spoken = (result.content ?? "").trim();
+        const toolCalls = result.toolCalls ?? [];
+
         messagesRef.current = [
           ...messagesRef.current,
-          { role: "assistant", content: blocks },
+          {
+            role: "assistant",
+            content: result.content ?? "",
+            ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {}),
+          },
         ];
-
-        const spoken = blocks
-          .filter((b) => b.type === "text")
-          .map((b) => String(b.text ?? ""))
-          .join(" ")
-          .trim();
-
-        const toolUses = blocks.filter(
-          (b) => b.type === "tool_use",
-        ) as unknown as ToolUseBlock[];
 
         // Speak before running tools so the highlight lands while the tutor is
         // still talking about it, which is what makes it feel like pointing.
@@ -115,30 +113,19 @@ export function useVoiceLoop({
           await speak(spoken, { synthesize, onLog: console.debug });
         }
 
-        if (toolUses.length === 0) break;
+        if (toolCalls.length === 0) break;
 
         const map = handlersRef.current;
-        const results = [];
-        for (const use of toolUses) {
-          results.push(
-            map
-              ? await runToolUse(use, map, console.debug)
-              : {
-                  type: "tool_result" as const,
-                  tool_use_id: use.id,
-                  content: JSON.stringify({ ok: false, error: "UI not ready" }),
-                  is_error: true,
-                },
-          );
+        for (const call of toolCalls) {
+          const message = map
+            ? await runToolCall(call, map, console.debug)
+            : {
+                role: "tool" as const,
+                tool_call_id: call.id,
+                content: JSON.stringify({ ok: false, error: "UI not ready" }),
+              };
+          messagesRef.current = [...messagesRef.current, message];
         }
-
-        messagesRef.current = [
-          ...messagesRef.current,
-          {
-            role: "user",
-            content: results as unknown as Array<Record<string, unknown>>,
-          },
-        ];
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Tutor request failed");

@@ -1,20 +1,18 @@
 import type { ToolHandlerMap, ToolName } from "../contracts/tools";
 import { TOOL_NAMES } from "../contracts/tools";
 
-/** Anthropic tool_use content block. */
-export interface ToolUseBlock {
-  type: "tool_use";
+/** OpenAI-style tool call, as returned through OpenRouter. */
+export interface ToolCall {
   id: string;
-  name: string;
-  input: unknown;
+  type: string;
+  function: { name: string; arguments: string };
 }
 
-/** Anthropic tool_result content block. */
-export interface ToolResultBlock {
-  type: "tool_result";
-  tool_use_id: string;
+/** OpenAI-style tool result message. */
+export interface ToolResultMessage {
+  role: "tool";
+  tool_call_id: string;
   content: string;
-  is_error?: boolean;
 }
 
 const WATCHDOG_MS = 2500;
@@ -36,53 +34,53 @@ async function withWatchdog<T>(work: Promise<T>, fallback: T): Promise<T> {
 }
 
 /**
- * Executes one tool call and always returns a tool_result block.
+ * Executes one tool call and always returns a tool result message.
  *
- * A tool_result is produced on success, on throw, on unknown tool name and on
- * timeout. Anthropic requires every tool_use to be answered by a tool_result in
- * the very next user message, so a missing one is an API error, not just a
- * stalled tutor. Nothing here is allowed to reject.
+ * A result is produced on success, on throw, on unknown tool name, on
+ * unparseable arguments and on timeout. Every tool_call must be answered before
+ * the next request or the API rejects the conversation — so a missing result is
+ * a hard error, not merely a stalled tutor. Nothing here is allowed to reject.
  */
-export async function runToolUse(
-  block: ToolUseBlock,
+export async function runToolCall(
+  call: ToolCall,
   handlers: ToolHandlerMap,
   onLog?: (message: string, detail?: unknown) => void,
-): Promise<ToolResultBlock> {
+): Promise<ToolResultMessage> {
   let output: unknown;
-  let isError = false;
 
   try {
-    if (!isToolName(block.name)) {
-      output = { ok: false, error: `Unknown tool: ${block.name}` };
-      isError = true;
+    const name = call.function?.name ?? "";
+    if (!isToolName(name)) {
+      output = { ok: false, error: `Unknown tool: ${name}` };
     } else {
-      const handler = handlers[block.name] as (a: unknown) => Promise<unknown>;
-      const args = (block.input ?? {}) as unknown;
+      let args: unknown = {};
+      try {
+        args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+      } catch {
+        args = {};
+      }
+
+      const handler = handlers[name] as (a: unknown) => Promise<unknown>;
       output = await withWatchdog(
-        Promise.resolve(handler(args)).catch((error: unknown) => {
-          isError = true;
-          return {
-            ok: false,
-            error: error instanceof Error ? error.message : "Tool failed",
-          };
-        }),
+        Promise.resolve(handler(args)).catch((error: unknown) => ({
+          ok: false,
+          error: error instanceof Error ? error.message : "Tool failed",
+        })),
         { ok: false, error: "Tool timed out" },
       );
     }
   } catch (error) {
-    isError = true;
     output = {
       ok: false,
       error: error instanceof Error ? error.message : "Tool dispatch failed",
     };
   }
 
-  onLog?.(`tool ${block.name}`, output);
+  onLog?.(`tool ${call.function?.name}`, output);
 
   return {
-    type: "tool_result",
-    tool_use_id: block.id,
+    role: "tool",
+    tool_call_id: call.id,
     content: JSON.stringify(output),
-    ...(isError ? { is_error: true } : {}),
   };
 }
