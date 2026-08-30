@@ -99,24 +99,34 @@ export function createBrowserStt(options: {
     return r;
   };
 
+  const start = () => {
+    if (running || paused) return;
+    running = true;
+    recognition = build();
+    try {
+      recognition.start();
+    } catch {
+      /* already started */
+    }
+  };
+
   return {
-    start() {
-      if (running) return;
-      running = true;
-      recognition = build();
-      try {
-        recognition.start();
-      } catch {
-        /* already started */
-      }
-    },
+    start,
     stop() {
       running = false;
       recognition?.stop();
       recognition = null;
     },
     setPaused(next) {
+      if (paused === next) return;
       paused = next;
+      if (paused) {
+        running = false;
+        recognition?.stop();
+        recognition = null;
+      } else {
+        start();
+      }
     },
     setLang(next) {
       lang = next;

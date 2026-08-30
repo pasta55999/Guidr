@@ -9,37 +9,36 @@ export interface MicButtonProps {
   status: TutorStatus;
   micEnabled: boolean;
   onStart: () => void;
-  onStop: () => void;
 }
 
-export function MicButton({
-  status,
-  micEnabled,
-  onStart,
-  onStop,
-}: MicButtonProps) {
-  const connecting = status === "starting";
-  const active =
-    status === "listening" || status === "thinking" || status === "speaking";
-  const label = active
-    ? "End lesson"
-    : connecting
-      ? "Starting…"
-      : status === "error"
-        ? "Retry"
-        : "Start talking";
+export function MicButton({ status, micEnabled, onStart }: MicButtonProps) {
+  const listening = status === "listening";
+  const busy =
+    status === "starting" || status === "thinking" || status === "speaking";
+  const label =
+    status === "starting"
+      ? "Opening mic…"
+      : listening
+        ? "Listening…"
+        : status === "thinking"
+          ? "Thinking…"
+          : status === "speaking"
+            ? "Tutor speaking…"
+            : status === "error"
+              ? "Retry"
+              : "Click to talk";
 
   return (
     <div className="ui-mic-wrap">
       <button
         type="button"
-        className={`ui-mic${active ? " is-live" : ""}${connecting ? " is-busy" : ""}`}
-        disabled={connecting || !micEnabled}
-        aria-pressed={active}
-        onClick={active ? onStop : onStart}
+        className={`ui-mic${listening ? " is-live" : ""}${busy ? " is-busy" : ""}`}
+        disabled={busy || listening || !micEnabled}
+        aria-pressed={listening}
+        onClick={onStart}
       >
         <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-          {active ? (
+          {listening ? (
             <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" />
           ) : (
             <path
@@ -51,9 +50,11 @@ export function MicButton({
         <span>{label}</span>
       </button>
       <span className="ui-mic-note">
-        {micEnabled
-          ? "Speak in English or العربية — the tutor follows your language."
-          : "Microphone permission is required."}
+        {!micEnabled
+          ? "Voice will be ready when the lesson finishes loading."
+          : listening
+            ? "Speak now — the microphone stops listening after this turn."
+            : "Click before each turn, then speak in English or العربية."}
       </span>
     </div>
   );

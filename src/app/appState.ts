@@ -86,6 +86,7 @@ export type AppAction =
   | { type: "set-description"; value: string }
   | { type: "set-tax-rate"; value: string }
   | { type: "attach" }
+  | { type: "save-draft" }
   | { type: "discard" }
   | { type: "submit" }
   | { type: "dismiss-notice" }
@@ -154,6 +155,21 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             notice: null,
           };
 
+    case "save-draft":
+      if (
+        !state.supplierKey &&
+        state.amount.trim() === "" &&
+        state.description.trim() === "" &&
+        state.attachments.length === 0
+      ) {
+        return { ...state, notice: "Add an invoice detail before saving the draft." };
+      }
+      return {
+        ...state,
+        supplierMenuOpen: false,
+        notice: "Draft saved. You can safely continue from this form.",
+      };
+
     // Decoy: never actually destroys the learner's work mid-lesson.
     case "discard":
       return {
@@ -166,14 +182,25 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       if (state.submitted) {
         return { ...state, notice: "This invoice has already been submitted." };
       }
+      if (!state.supplierKey) {
+        return { ...state, notice: "Select a supplier before submitting." };
+      }
+      const amount = Number(state.amount.replaceAll(",", "").trim());
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return { ...state, notice: "Enter a valid amount greater than zero." };
+      }
+      if (state.description.trim().length < 4) {
+        return { ...state, notice: "Add a short description before submitting." };
+      }
       const number = `INV-${state.nextSeq}`;
       return {
         ...state,
+        screen: "list",
         submitted: {
           number,
           supplierEn: supplierLabel(state.supplierKey) ?? "Unassigned supplier",
-          amount: state.amount.trim() === "" ? "0.00" : state.amount.trim(),
-          description: state.description,
+          amount: state.amount.trim(),
+          description: state.description.trim(),
           submittedAt: "Today",
         },
         nextSeq: state.nextSeq + 1,

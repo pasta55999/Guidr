@@ -45,7 +45,7 @@ blocks install scripts by default and the Convex CLI bundler needs it.
 | Concern | Owner |
 |---|---|
 | Arabic / code-switched speech recognition | Munsit `munsit-en-ar` via `convex/speech.ts:transcribe` |
-| Reasoning, tone, language mirroring, tool calls | Claude Messages API via `convex/tutor.ts:respond` |
+| Reasoning, tone, language mirroring, tool calls | Claude via OpenRouter Chat Completions in `convex/tutor.ts:respond` |
 | Speech output | Munsit Faseeh (Arabic) / browser `SpeechSynthesis` (English) |
 | "Was that click correct? What step are we on?" | `convex/sessions.ts:recordClick` — deterministic |
 | Pixel position of an element | `src/overlay/*`, via `[data-tutor-id]` + `getBoundingClientRect` |
@@ -58,19 +58,24 @@ Consequences that must not be undone:
 - No tool schema accepts a number that could be an x/y coordinate.
 - Progress is read from a Convex query, never mirrored into React state.
 - `lookup_docs` reads Convex only. Context.dev is **never** called on a voice turn.
-- Every `tool_use` must be answered by a `tool_result` in the immediately following
-  user message — Anthropic errors otherwise, so `runToolUse` never throws.
+- Every OpenAI-style `tool_call` returned by OpenRouter must be answered by a matching
+  `role: "tool"` message before the next user message, so `runToolCall` never throws.
 
 ## Voice pipeline
 
 Three stages, orchestrated by `src/voice/useVoiceLoop.ts`:
 
 1. **Capture** (`src/voice/mic.ts`) — raw PCM via `ScriptProcessorNode`, WAV encoded
-   in-browser. WAV avoids any container/codec negotiation with Munsit, and the same
-   sample buffer provides the RMS used for silence-based turn detection. The mic is
-   paused while the tutor speaks so we never transcribe our own audio.
+   in-browser. WAV avoids container/codec negotiation with Munsit. Ordinary turns are
+   click-to-talk and the mic pauses after each reply. During tutor speech, holding
+   **Ctrl+Space** immediately stops playback and force-captures audio until either key
+   is released; release bypasses silence detection and submits immediately. Laptop
+   `Fn` is handled by firmware and normally never reaches browser JavaScript, so it
+   cannot be the reliable shortcut.
 2. **Understand + reason** — WAV → `speech.transcribe` (Munsit) → text → appended to
-   the message list → `tutor.respond` (Claude, with tools) → tool loop in the browser.
+   the message list → `tutor.respond` (Claude through OpenRouter, with tools) → tool
+   loop in the browser. An interruption invalidates any stale in-flight tutor turn;
+   tool results are completed before a new learner message to keep history valid.
 3. **Speak** (`src/voice/speak.ts`) — routed by script: any Arabic → Munsit Faseeh
    (`dialect: emirati`), which keeps mixed Arabic-English in a single voice and so
    preserves intra-sentence code-switching; pure English → browser `SpeechSynthesis`.

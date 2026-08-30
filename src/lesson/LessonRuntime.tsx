@@ -66,10 +66,10 @@ function LessonStage({
   const { clear } = useHighlight();
   const creatingRef = useRef(false);
 
-  // No Start button: the lesson begins listening as soon as the page loads.
-  // The browser still shows its own microphone permission prompt on the first
-  // visit — that is the browser's, not ours, and cannot be skipped. Once granted
-  // for this origin, later loads start silently.
+  // Prepare the durable lesson state as soon as the page loads.
+  // This does not start the microphone or make the tutor speak.
+  // Voice remains idle and the browser asks for microphone permission only after
+  // the learner clicks the talk button.
   useEffect(() => {
     if (sessionId || creatingRef.current) return;
     creatingRef.current = true;
@@ -78,16 +78,9 @@ function LessonStage({
     });
   }, [sessionId, start]);
 
-  // A Convex session must exist before the tutor can be told where we are.
-  // Depend on the specific fields, not the whole `voice` object, which is a new
-  // reference on every render.
-  const voiceStatus = voice.status;
-  const voiceStart = voice.start;
-  useEffect(() => {
-    if (sessionId && snapshot && voiceStatus === "idle") {
-      void voiceStart();
-    }
-  }, [sessionId, snapshot, voiceStatus, voiceStart]);
+  // A Convex session must exist before push-to-talk can be enabled.
+  // Voice is started only by the button click, never by an effect.
+  const micEnabled = Boolean(sessionId && snapshot);
 
   /**
    * THE DETERMINISTIC LOOP.
@@ -120,7 +113,7 @@ function LessonStage({
           <StepTracker
             stepIndex={snapshot?.stepIndex ?? 0}
             totalSteps={snapshot?.totalSteps ?? 5}
-            stepTitleEn={snapshot?.stepTitleEn ?? "Press Start talking to begin"}
+            stepTitleEn={snapshot?.stepTitleEn ?? "Preparing your lesson…"}
             stepTitleAr={snapshot?.stepTitleAr ?? ""}
             lessonCompleted={snapshot?.lessonCompleted ?? false}
           />
@@ -144,9 +137,8 @@ function LessonStage({
           <StatusPill status={voice.status} />
           <MicButton
             status={voice.status}
-            micEnabled
+            micEnabled={micEnabled}
             onStart={() => void voice.start()}
-            onStop={voice.stop}
           />
         </div>
       </header>
@@ -158,6 +150,22 @@ function LessonStage({
       )}
 
       {voice.error && <div className="lr-error">{voice.error}</div>}
+
+      {active && (
+        <div
+          className={`lr-interrupt${voice.interruptHeld ? " is-held" : ""}`}
+          role="status"
+          aria-live="polite"
+        >
+          {voice.interruptHeld ? (
+            <strong>Listening — release the keys to send</strong>
+          ) : (
+            <span>
+              Hold <kbd>Ctrl</kbd> + <kbd>Space</kbd> to interrupt the tutor
+            </span>
+          )}
+        </div>
+      )}
 
       <main className="lr-stage">
         <InvoiceApp onTutorAction={handleTutorAction} />

@@ -65,6 +65,21 @@ export function buildStateMessage(
   }
 
   const next = result.nextStep;
+  if (next?.elementId === "submit-invoice-button") {
+    return (
+      `${PREFIX} correct_action: the learner correctly used "${clickedElementId}". ` +
+      `Step ${result.previousStepIndex + 1} is complete. They are now on step ` +
+      `${result.currentStepIndex + 1} of ${totalSteps}: ${next.titleEn} ` +
+      `(target elementId: "${next.elementId}"). This action submits financial data. ` +
+      `Acknowledge briefly, then read back the planned supplier, Al Masa Trading LLC, and ` +
+      `planned amount, AED 1,250. You do not receive the description text, so ask them to ` +
+      `verify the description they entered and never invent it. Ask one clear verbal question ` +
+      `confirming everything looks right, then STOP. Do not tell them to click Submit Invoice ` +
+      `and do not call highlight_element yet. Only after a later clear yes may you teach and ` +
+      `highlight the submit action.`
+    );
+  }
+
   return (
     `${PREFIX} correct_action: the learner correctly used "${clickedElementId}". ` +
     `Step ${result.previousStepIndex + 1} is complete. They are now on step ` +
@@ -72,7 +87,8 @@ export function buildStateMessage(
     (next
       ? `: ${next.titleEn} (target elementId: "${next.elementId}").`
       : `.`) +
-    ` Acknowledge briefly, then teach this step and highlight its element.`
+    ` Acknowledge briefly, then teach this step using action, meaning and reason, and ` +
+    `highlight its element.`
   );
 }
 
@@ -85,12 +101,48 @@ export function buildResumeMessage(
   lessonCompleted: boolean,
 ): string {
   if (lessonCompleted) {
-    return `${PREFIX} resumed: this learner has already completed all ${totalSteps} steps. Congratulate them briefly and do not re-teach.`;
+    return (
+      `${PREFIX} resumed: this learner has already completed all ${totalSteps} steps. ` +
+      `Do not replay the dashboard introduction or re-teach the lesson. Answer their latest ` +
+      `utterance directly; if they are only returning to the lesson, congratulate them briefly.`
+    );
   }
+
+  const currentStep =
+    `step ${stepIndex + 1} of ${totalSteps}: ${stepTitleEn} ` +
+    `(target elementId: "${targetElementId ?? "unknown"}")`;
+
+  if (stepIndex === 0) {
+    return (
+      `${PREFIX} conversation_opened: this is the opening turn for Guidr on the Nexus ` +
+      `Finance dashboard. The learner is Layla, a Finance Assistant working in Accounts ` +
+      `Payable in Dubai. Say this dashboard-specific introduction: "Hey Layla — I'm Guidr. ` +
+      `Your team set me up to help you get comfortable with Nexus Finance, where supplier ` +
+      `invoices, approvals, payments and reports live in one dashboard. I know you work in ` +
+      `Accounts Payable, so I'll keep this relevant." Then respond to the learner's latest ` +
+      `utterance. If they already named what they need, do not ask them again; answer or ` +
+      `begin ${currentStep} using action, meaning and reason, then highlight it. If they ` +
+      `have not named a task, add: "Ask me about anything on this dashboard — I'll explain ` +
+      `what it does, why it matters, and guide you from there. What are you working on?" ` +
+      `Never ask for their identity or whether they are ready.`
+    );
+  }
+
+  if (targetElementId === "submit-invoice-button") {
+    return (
+      `${PREFIX} resumed: the learner is on ${currentStep}. Do not replay the full dashboard ` +
+      `introduction. Answer their latest utterance first. Before teaching this consequential ` +
+      `step, read back only the known details: Al Masa Trading LLC, AED 1,250, and the ` +
+      `description they entered. Ask one clear verbal question confirming everything looks ` +
+      `right, then STOP. Do not tell them to click or call highlight_element until a later ` +
+      `clear yes. Do not re-teach earlier steps.`
+    );
+  }
+
   return (
-    `${PREFIX} resumed: the learner is on step ${stepIndex + 1} of ${totalSteps}: ` +
-    `${stepTitleEn} (target elementId: "${targetElementId ?? "unknown"}"). ` +
-    `Greet them briefly and teach this step now, highlighting its element. ` +
-    `Do not re-teach earlier steps.`
+    `${PREFIX} resumed: the learner is on ${currentStep}. Do not replay the full dashboard ` +
+    `introduction. Answer their latest utterance first. If they want to continue the invoice ` +
+    `lesson, briefly welcome them back, teach this step using action, meaning and reason, and ` +
+    `highlight its element. Do not re-teach earlier steps.`
   );
 }

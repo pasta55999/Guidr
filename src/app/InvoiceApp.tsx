@@ -5,6 +5,7 @@
 import {
   useCallback,
   useReducer,
+  useState,
   type Dispatch,
   type MouseEvent,
 } from "react";
@@ -33,13 +34,112 @@ export interface InvoiceAppProps {
 }
 
 const NAV = [
-  "Dashboard",
-  "Supplier Invoices",
-  "Purchase Orders",
-  "Payments",
-  "Suppliers",
-  "Reports",
-];
+  { id: "dashboard", label: "Dashboard", area: "Overview" },
+  {
+    id: "supplier-invoices",
+    label: "Supplier Invoices",
+    area: "Payables",
+  },
+  { id: "purchase-orders", label: "Purchase Orders", area: "Procurement" },
+  { id: "payments", label: "Payments", area: "Payables" },
+  { id: "suppliers", label: "Suppliers", area: "Directory" },
+  { id: "reports", label: "Reports", area: "Analytics" },
+] as const;
+
+type NavSection = (typeof NAV)[number]["id"];
+type WorkspaceSection = Exclude<NavSection, "supplier-invoices">;
+
+interface WorkspacePage {
+  title: string;
+  description: string;
+  metrics: readonly {
+    title: string;
+    value: string;
+    note: string;
+  }[];
+  columns: readonly string[];
+  rows: readonly (readonly string[])[];
+}
+
+const WORKSPACE_PAGES: Record<WorkspaceSection, WorkspacePage> = {
+  dashboard: {
+    title: "Accounts Payable overview",
+    description: "Today’s workload across invoices, approvals and payments.",
+    metrics: [
+      { title: "Invoices this month", value: "24", note: "AED 248,341.15" },
+      { title: "Pending approval", value: "1", note: "AED 7,930.00" },
+      { title: "Payments due", value: "8", note: "next seven days" },
+    ],
+    columns: ["Recent activity", "Owner", "When", "Status"],
+    rows: [
+      ["INV-2039 approved", "Omar K.", "10:24", "Approved"],
+      ["INV-2040 sent for review", "Layla A.", "09:46", "Pending"],
+      ["PAY-884 bank file prepared", "Mariam H.", "Yesterday", "Ready"],
+    ],
+  },
+  "purchase-orders": {
+    title: "Purchase orders",
+    description: "Open commitments awaiting delivery or invoice matching.",
+    metrics: [
+      { title: "Open orders", value: "6", note: "AED 91,460.00" },
+      { title: "Awaiting receipt", value: "2", note: "action required" },
+      { title: "Matched", value: "18", note: "this month" },
+    ],
+    columns: ["Purchase order", "Supplier", "Amount (AED)", "Status"],
+    rows: [
+      ["PO-1138", "Al Masa Trading LLC", "12,500.00", "Open"],
+      ["PO-1137", "Desert Rose Logistics LLC", "7,930.00", "Received"],
+      ["PO-1132", "Emirates Office Supplies FZ-LLC", "2,150.75", "Matched"],
+    ],
+  },
+  payments: {
+    title: "Payments",
+    description: "Approved supplier payments and their processing status.",
+    metrics: [
+      { title: "Scheduled", value: "8", note: "AED 143,820.40" },
+      { title: "Needs review", value: "1", note: "bank details" },
+      { title: "Paid this month", value: "12", note: "AED 214,860.40" },
+    ],
+    columns: ["Payment", "Supplier", "Due date", "Status"],
+    rows: [
+      ["PAY-884", "Gulf Horizon Contracting LLC", "18 Mar 2025", "Ready"],
+      ["PAY-883", "Emirates Office Supplies FZ-LLC", "20 Mar 2025", "Scheduled"],
+      ["PAY-879", "Desert Rose Logistics LLC", "14 Mar 2025", "Paid"],
+    ],
+  },
+  suppliers: {
+    title: "Supplier directory",
+    description: "Registered suppliers available for purchasing and payment.",
+    metrics: [
+      { title: "Active suppliers", value: "42", note: "four added this year" },
+      { title: "TRN verified", value: "40", note: "95 percent" },
+      { title: "Needs review", value: "2", note: "profile details" },
+    ],
+    columns: ["Supplier", "TRN", "Location", "Status"],
+    rows: [
+      ["Al Masa Trading LLC", "100234567800003", "Dubai", "Active"],
+      ["Gulf Horizon Contracting LLC", "100884512700003", "Abu Dhabi", "Active"],
+      ["Emirates Office Supplies FZ-LLC", "100471209900003", "Dubai", "Active"],
+      ["Desert Rose Logistics LLC", "100662330400003", "Sharjah", "Review"],
+    ],
+  },
+  reports: {
+    title: "Reports",
+    description: "Current finance reports prepared from the workspace data.",
+    metrics: [
+      { title: "Available reports", value: "6", note: "finance workspace" },
+      { title: "Updated today", value: "4", note: "latest data" },
+      { title: "Scheduled", value: "2", note: "monthly delivery" },
+    ],
+    columns: ["Report", "Period", "Last updated", "Status"],
+    rows: [
+      ["Accounts payable ageing", "March 2025", "Today, 10:30", "Ready"],
+      ["Supplier spend summary", "Q1 2025", "Today, 09:15", "Ready"],
+      ["VAT input register", "March 2025", "Yesterday", "Ready"],
+      ["Payment forecast", "Next 30 days", "Today, 08:40", "Ready"],
+    ],
+  },
+};
 
 const REGISTER_ROWS = [
   { number: "INV-2038", supplier: "Gulf Horizon Contracting LLC", amount: "18,400.00", status: "Paid" },
@@ -53,7 +153,12 @@ function label(id: TutorElementId) {
 
 export function InvoiceApp({ onTutorAction }: InvoiceAppProps) {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
+  const [activeSection, setActiveSection] =
+    useState<NavSection>("supplier-invoices");
+  const [searchQuery, setSearchQuery] = useState("");
   const formActive = state.screen === "form";
+  const invoiceSectionActive = activeSection === "supplier-invoices";
+  const sectionMeta = NAV.find((item) => item.id === activeSection) ?? NAV[0];
 
   const report = useCallback(
     (target: EventTarget | null, value?: string) => {
@@ -78,6 +183,18 @@ export function InvoiceApp({ onTutorAction }: InvoiceAppProps) {
     [report, state.supplierMenuOpen],
   );
 
+  const navigate = (section: NavSection) => {
+    setActiveSection(section);
+    setSearchQuery("");
+    dispatch({ type: "close-supplier-menu" });
+  };
+
+  const openNewInvoice = () => {
+    setActiveSection("supplier-invoices");
+    setSearchQuery("");
+    dispatch({ type: "new-invoice" });
+  };
+
   return (
     <div
       className="nx-app"
@@ -87,21 +204,29 @@ export function InvoiceApp({ onTutorAction }: InvoiceAppProps) {
       }}
     >
       <aside className="nx-sidebar">
-        <div className="nx-brand">
+        <button
+          type="button"
+          className="nx-brand"
+          onClick={() => navigate("dashboard")}
+          aria-label="Open dashboard"
+        >
           <span className="nx-brand-mark">NF</span>
           <span className="nx-brand-text">
             <strong>Nexus Finance</strong>
             <small>Accounts Payable</small>
           </span>
-        </div>
-        <nav className="nx-nav">
+        </button>
+        <nav className="nx-nav" aria-label="Finance workspace">
           {NAV.map((item) => (
-            <span
-              key={item}
-              className={`nx-nav-item${item === "Supplier Invoices" ? " is-active" : ""}`}
+            <button
+              key={item.id}
+              type="button"
+              className={`nx-nav-item${item.id === activeSection ? " is-active" : ""}`}
+              aria-current={item.id === activeSection ? "page" : undefined}
+              onClick={() => navigate(item.id)}
             >
-              {item}
-            </span>
+              {item.label}
+            </button>
           ))}
         </nav>
         <div className="nx-sidebar-foot">
@@ -116,15 +241,22 @@ export function InvoiceApp({ onTutorAction }: InvoiceAppProps) {
       <div className="nx-main">
         <header className="nx-topbar">
           <div className="nx-crumb">
-            Payables <span>/</span> <strong>Supplier Invoices</strong>
+            {sectionMeta.area} <span>/</span> <strong>{sectionMeta.label}</strong>
           </div>
           <div className="nx-topbar-actions">
-            <span className="nx-search">Search invoices, suppliers, TRN…</span>
+            <input
+              type="search"
+              className="nx-search"
+              aria-label={`Search ${sectionMeta.label}`}
+              placeholder="Search this section…"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
             <button
               {...tutorAttrs("new-invoice-button")}
               type="button"
               className="nx-btn nx-btn--primary"
-              onClick={() => dispatch({ type: "new-invoice" })}
+              onClick={openNewInvoice}
             >
               + {label("new-invoice-button").labelEn}
             </button>
@@ -132,16 +264,40 @@ export function InvoiceApp({ onTutorAction }: InvoiceAppProps) {
         </header>
 
         <div className="nx-content">
-          {/* Both layers stay mounted so every registry id always resolves to a
-              real node with a real rect; only one is visible/interactive. */}
-          <div className="nx-stage">
-            <RegisterLayer state={state} active={!formActive} />
-            <FormLayer
-              state={state}
-              active={formActive}
-              dispatch={dispatch}
-              report={report}
-            />
+          <div className="nx-workspace">
+            <div
+              className={`nx-view${invoiceSectionActive ? " is-active" : ""}`}
+              aria-hidden={!invoiceSectionActive}
+              {...(!invoiceSectionActive ? { inert: true } : {})}
+            >
+              {/* Both layers stay mounted so every registry id always resolves to a
+                  real node with a real rect; only one is visible/interactive. */}
+              <div className="nx-stage">
+                <RegisterLayer
+                  state={state}
+                  active={!formActive}
+                  searchQuery={searchQuery}
+                />
+                <FormLayer
+                  state={state}
+                  active={formActive}
+                  dispatch={dispatch}
+                  report={report}
+                />
+              </div>
+            </div>
+            <div
+              className={`nx-view${!invoiceSectionActive ? " is-active" : ""}`}
+              aria-hidden={invoiceSectionActive}
+              {...(invoiceSectionActive ? { inert: true } : {})}
+            >
+              {!invoiceSectionActive && (
+                <WorkspaceLayer
+                  section={activeSection}
+                  searchQuery={searchQuery}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -149,14 +305,88 @@ export function InvoiceApp({ onTutorAction }: InvoiceAppProps) {
   );
 }
 
+function WorkspaceLayer({
+  section,
+  searchQuery,
+}: {
+  section: NavSection;
+  searchQuery: string;
+}) {
+  if (section === "supplier-invoices") return null;
+
+  const page = WORKSPACE_PAGES[section];
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const rows = normalizedQuery
+    ? page.rows.filter((row) =>
+        row.some((cell) => cell.toLowerCase().includes(normalizedQuery)),
+      )
+    : page.rows;
+
+  return (
+    <section className="nx-page" aria-labelledby={`nx-page-${section}`}>
+      <header className="nx-page-head">
+        <div>
+          <h1 id={`nx-page-${section}`}>{page.title}</h1>
+          <p>{page.description}</p>
+        </div>
+        <span className="nx-chip">
+          {rows.length} {rows.length === 1 ? "record" : "records"}
+        </span>
+      </header>
+
+      <div className="nx-metrics">
+        {page.metrics.map((metric) => (
+          <Metric key={metric.title} {...metric} />
+        ))}
+      </div>
+
+      <div className="nx-card">
+        <table className="nx-table">
+          <thead>
+            <tr>
+              {page.columns.map((column) => (
+                <th key={column}>{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.join("-")}>
+                {row.map((cell, index) => (
+                  <td key={`${index}-${cell}`}>
+                    {index === row.length - 1 ? (
+                      <span className="nx-status">{cell}</span>
+                    ) : (
+                      cell
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td className="nx-no-results" colSpan={page.columns.length}>
+                  No records match “{searchQuery.trim()}”.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function RegisterLayer({
   state,
   active,
+  searchQuery,
 }: {
   state: AppState;
   active: boolean;
+  searchQuery: string;
 }) {
-  const rows = state.submitted
+  const allRows = state.submitted
     ? [
         {
           number: state.submitted.number,
@@ -167,12 +397,20 @@ function RegisterLayer({
         ...REGISTER_ROWS,
       ]
     : REGISTER_ROWS;
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const rows = normalizedQuery
+    ? allRows.filter((row) =>
+        Object.values(row).some((value) =>
+          value.toLowerCase().includes(normalizedQuery),
+        ),
+      )
+    : allRows;
 
   return (
     <section
       className={`nx-layer${active ? " is-active" : ""}`}
-      inert={!active}
       aria-hidden={!active}
+      {...(!active ? { inert: true } : {})}
     >
       <div className="nx-metrics">
         <Metric title="Awaiting entry" value="0" note="drafts in progress" />
@@ -208,6 +446,13 @@ function RegisterLayer({
                 </td>
               </tr>
             ))}
+            {rows.length === 0 && (
+              <tr>
+                <td className="nx-no-results" colSpan={4}>
+                  No invoices match “{searchQuery.trim()}”.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 
@@ -257,8 +502,8 @@ function FormLayer({
   return (
     <section
       className={`nx-layer${active ? " is-active" : ""}`}
-      inert={!active}
       aria-hidden={!active}
+      {...(!active ? { inert: true } : {})}
     >
       <div className="nx-card nx-card--form">
         <header className="nx-card-head">
@@ -372,7 +617,11 @@ function FormLayer({
               ? `Supplier: ${supplierLabel(state.supplierKey)}`
               : "No supplier selected"}
           </span>
-          <button type="button" className="nx-btn nx-btn--ghost">
+          <button
+            type="button"
+            className="nx-btn nx-btn--ghost"
+            onClick={() => dispatch({ type: "save-draft" })}
+          >
             Save draft
           </button>
           <button

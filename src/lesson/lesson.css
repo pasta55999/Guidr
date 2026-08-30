@@ -83,6 +83,43 @@
   transition: width 90ms linear;
 }
 
+.lr-interrupt {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  z-index: 9500;
+  transform: translateX(-50%);
+  padding: 9px 14px;
+  border: 1px solid rgba(15, 39, 67, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 39, 67, 0.9);
+  color: #fff;
+  font-size: 12.5px;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.lr-interrupt kbd {
+  display: inline-block;
+  min-width: 30px;
+  margin: 0 2px;
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  font: 600 11px/18px ui-monospace, Consolas, monospace;
+  text-align: center;
+}
+
+.lr-interrupt.is-held {
+  border-color: #f59f0a;
+  background: #a35b00;
+  box-shadow:
+    0 5px 18px rgba(15, 23, 42, 0.2),
+    0 0 0 5px rgba(245, 159, 10, 0.2);
+}
+
 .lr-stage {
   flex: 1;
   min-height: 0;

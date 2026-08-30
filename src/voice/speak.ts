@@ -46,17 +46,23 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
 }
 
 let activeAudio: HTMLAudioElement | null = null;
+let finishActiveSpeech: (() => void) | null = null;
 
 function playBlob(blob: Blob, onBlocked?: () => void): Promise<void> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
     activeAudio = audio;
+    let settled = false;
     const done = () => {
+      if (settled) return;
+      settled = true;
       URL.revokeObjectURL(url);
       if (activeAudio === audio) activeAudio = null;
+      if (finishActiveSpeech === done) finishActiveSpeech = null;
       resolve();
     };
+    finishActiveSpeech = done;
     audio.onended = done;
     audio.onerror = done;
     void audio.play().catch((error: unknown) => {
@@ -82,19 +88,30 @@ function browserSpeak(text: string, lang: string): Promise<void> {
       .getVoices()
       .find((v) => v.lang.toLowerCase().startsWith(lang.slice(0, 2)));
     if (voice) utterance.voice = voice;
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      if (finishActiveSpeech === done) finishActiveSpeech = null;
+      resolve();
+    };
+    finishActiveSpeech = done;
+    utterance.onend = done;
+    utterance.onerror = done;
     window.speechSynthesis.speak(utterance);
   });
 }
 
 /** Stop any in-flight speech immediately. */
 export function stopSpeaking(): void {
-  if (activeAudio) {
-    activeAudio.pause();
-    activeAudio = null;
-  }
+  if (activeAudio) activeAudio.pause();
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  // `pause()` and speechSynthesis.cancel() do not consistently fire an ended
+  // event across browsers. Resolve the pending speak() promise ourselves so an
+  // interrupted tutor turn cannot hang forever.
+  finishActiveSpeech?.();
+  finishActiveSpeech = null;
+  activeAudio = null;
 }
 
 export async function speak(
@@ -102,7 +119,7 @@ export async function speak(
   { synthesize, onLog, signal, onAudioBlocked }: SpeakOptions,
 ): Promise<void> {
   const clean = text.trim();
-  if (!clean) return;
+  if (!clean || signal?.cancelled) return;
 
   if (!hasArabic(clean)) {
     await browserSpeak(clean, "en-US");

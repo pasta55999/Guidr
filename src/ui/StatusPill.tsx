@@ -4,7 +4,7 @@ import type { TutorStatus } from "../contracts/session";
 import "./ui.css";
 
 const LABELS: Record<TutorStatus, string> = {
-  idle: "Not started",
+  idle: "Ready",
   starting: "Starting…",
   listening: "Listening",
   thinking: "Thinking…",

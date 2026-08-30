@@ -58,6 +58,22 @@
   padding: 0 6px;
 }
 
+.nx-brand {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.nx-brand:focus-visible {
+  outline: 2px solid #6ba6e6;
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
 .nx-brand-mark,
 .nx-avatar {
   display: grid;
@@ -102,10 +118,26 @@
 }
 
 .nx-nav-item {
+  width: 100%;
   padding: 7px 10px;
+  border: 0;
   border-radius: 7px;
-  font-size: 13px;
+  background: transparent;
   color: #b9cade;
+  font: inherit;
+  font-size: 13px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.nx-nav-item:hover:not(.is-active) {
+  background: #173657;
+  color: #e5edf6;
+}
+
+.nx-nav-item:focus-visible {
+  outline: 2px solid #6ba6e6;
+  outline-offset: 1px;
 }
 
 .nx-nav-item.is-active {
@@ -159,19 +191,76 @@
 }
 
 .nx-search {
+  width: 260px;
   padding: 7px 12px;
-  min-width: 260px;
   border: 1px solid var(--nx-line);
   border-radius: 7px;
+  outline: none;
   background: #fafbfd;
-  color: var(--nx-ink-3);
+  color: var(--nx-ink);
+  font: inherit;
   font-size: 12.5px;
+}
+
+.nx-search::placeholder {
+  color: var(--nx-ink-3);
+}
+
+.nx-search:focus {
+  border-color: var(--nx-primary-2);
+  box-shadow: 0 0 0 3px rgba(29, 93, 166, 0.12);
 }
 
 .nx-content {
   flex: 1;
   padding: 18px 20px;
   overflow: auto;
+}
+
+.nx-workspace {
+  display: grid;
+  grid-template-areas: "workspace";
+  align-items: start;
+}
+
+.nx-view {
+  grid-area: workspace;
+  min-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.nx-view.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.nx-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.nx-page-head h1 {
+  margin: 0 0 4px;
+  color: var(--nx-ink);
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.nx-page-head p {
+  margin: 0;
+  color: var(--nx-ink-2);
+}
+
+.nx-no-results {
+  padding: 28px 18px !important;
+  color: var(--nx-ink-3);
+  text-align: center !important;
 }
 
 /* Both layers occupy the same cell: everything stays mounted (so every

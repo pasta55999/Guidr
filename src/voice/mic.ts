@@ -68,6 +68,13 @@ export interface MicController {
   /** Paused while the tutor speaks, so we never transcribe our own audio. */
   setPaused: (paused: boolean) => void;
   isPaused: () => boolean;
+  /**
+   * Start push-to-interrupt capture immediately, without waiting for the RMS
+   * threshold. Returns false if the microphone is not ready.
+   */
+  beginHeldTurn: () => boolean;
+  /** Finalize the held audio immediately. Returns false when none was active. */
+  endHeldTurn: () => boolean;
 }
 
 export function createMic({
@@ -83,23 +90,27 @@ export function createMic({
 
   let paused = false;
   let speaking = false;
+  let heldTurn = false;
   let chunks: Float32Array[] = [];
   let speechStartedAt = 0;
   let lastVoiceAt = 0;
   let smoothed = 0;
+  let currentSampleRate = 48000;
 
-  const finish = (sampleRate: number) => {
+  const finish = (sampleRate: number): boolean => {
     const durationMs = Date.now() - speechStartedAt;
     const collected = chunks;
     speaking = false;
     chunks = [];
-    if (durationMs < MIN_SPEECH_MS || collected.length === 0) return;
+    if (durationMs < MIN_SPEECH_MS || collected.length === 0) return false;
     onUtterance(encodeWav(collected, sampleRate), durationMs);
+    return true;
   };
 
   const handleAudio = (event: AudioProcessingEvent) => {
     const input = event.inputBuffer.getChannelData(0);
     const sampleRate = event.inputBuffer.sampleRate;
+    currentSampleRate = sampleRate;
 
     let sum = 0;
     for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
@@ -107,8 +118,9 @@ export function createMic({
     smoothed = smoothed * 0.8 + rms * 0.2;
     onLevel?.(Math.min(1, smoothed * 12));
 
-    if (paused) {
-      // Drop everything while the tutor talks, and forget any partial turn.
+    if (paused && !heldTurn) {
+      // Drop everything while the tutor talks, and forget any partial automatic
+      // turn. A held turn overrides this pause: that is the barge-in mechanism.
       if (speaking) {
         speaking = false;
         chunks = [];
@@ -118,6 +130,17 @@ export function createMic({
 
     const now = Date.now();
     const isVoice = rms > SPEECH_RMS;
+
+    if (heldTurn) {
+      // Push-to-interrupt captures the whole key-held window, including quiet
+      // phonemes and natural pauses. Only key release finalizes it.
+      chunks.push(new Float32Array(input));
+      if (now - speechStartedAt >= MAX_SPEECH_MS) {
+        heldTurn = false;
+        finish(sampleRate);
+      }
+      return;
+    }
 
     if (isVoice && !speaking) {
       speaking = true;
@@ -151,6 +174,7 @@ export function createMic({
           },
         });
         context = new AudioContext();
+        if (context.state === "suspended") await context.resume();
         source = context.createMediaStreamSource(stream);
         // ScriptProcessorNode is deprecated but needs no separate worklet
         // module; acceptable for an MVP and works in current Chrome/Edge.
@@ -179,6 +203,7 @@ export function createMic({
       context = null;
       stream = null;
       speaking = false;
+      heldTurn = false;
       chunks = [];
     },
 
@@ -188,6 +213,27 @@ export function createMic({
 
     isPaused() {
       return paused;
+    },
+
+    beginHeldTurn() {
+      if (!stream || !context) return false;
+      // The keydown is a real user gesture, so this also resumes an AudioContext
+      // that Chrome may have suspended when the page auto-started.
+      if (context.state === "suspended") void context.resume();
+      heldTurn = true;
+      speaking = true;
+      paused = false;
+      speechStartedAt = Date.now();
+      lastVoiceAt = speechStartedAt;
+      chunks = [];
+      onSpeechStart?.();
+      return true;
+    },
+
+    endHeldTurn() {
+      if (!heldTurn) return false;
+      heldTurn = false;
+      return speaking ? finish(currentSampleRate) : false;
     },
   };
 }
