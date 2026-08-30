@@ -1,0 +1,636 @@
+/* Simulated enterprise invoicing app. Tuned for 1280x720.
+   Self-contained: colours/typography are set explicitly so the host page's
+   :root theme (including its dark scheme) cannot alter the "product". */
+
+.nx-app {
+  --nx-bg: #f4f6f9;
+  --nx-panel: #ffffff;
+  --nx-line: #dfe3ea;
+  --nx-line-soft: #eceff4;
+  --nx-ink: #0f172a;
+  --nx-ink-2: #4a5568;
+  --nx-ink-3: #7a869a;
+  --nx-primary: #17457c;
+  --nx-primary-2: #1d5da6;
+  --nx-accent: #0f766e;
+  --nx-danger: #b42318;
+
+  color-scheme: light;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  height: 100%;
+  min-height: 640px;
+  background: var(--nx-bg);
+  color: var(--nx-ink);
+  font: 400 13.5px/1.45 system-ui, "Segoe UI", Roboto, "Noto Sans Arabic",
+    sans-serif;
+  letter-spacing: 0;
+  text-align: start;
+  border: 1px solid var(--nx-line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.nx-app *,
+.nx-app *::before,
+.nx-app *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- sidebar ---------- */
+
+.nx-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 12px;
+  background: #0f2743;
+  color: #cbd7e6;
+  border-inline-end: 1px solid #0b1d33;
+}
+
+.nx-brand,
+.nx-sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px;
+}
+
+.nx-brand-mark,
+.nx-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 8px;
+  background: #2f6db5;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+
+.nx-avatar {
+  background: #1f4a75;
+}
+
+.nx-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nx-brand-text strong {
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.nx-brand-text small {
+  color: #8ba6c6;
+  font-size: 11px;
+}
+
+.nx-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.nx-nav-item {
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #b9cade;
+}
+
+.nx-nav-item.is-active {
+  background: #1c3f66;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px #2c5b8c;
+}
+
+.nx-sidebar-foot {
+  border-top: 1px solid #1b3a5e;
+  padding-top: 12px;
+}
+
+/* ---------- main ---------- */
+
+.nx-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nx-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--nx-panel);
+  border-bottom: 1px solid var(--nx-line);
+}
+
+.nx-crumb {
+  color: var(--nx-ink-3);
+  font-size: 13px;
+}
+
+.nx-crumb strong {
+  color: var(--nx-ink);
+  font-weight: 600;
+}
+
+.nx-crumb span {
+  margin: 0 6px;
+}
+
+.nx-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nx-search {
+  padding: 7px 12px;
+  min-width: 260px;
+  border: 1px solid var(--nx-line);
+  border-radius: 7px;
+  background: #fafbfd;
+  color: var(--nx-ink-3);
+  font-size: 12.5px;
+}
+
+.nx-content {
+  flex: 1;
+  padding: 18px 20px;
+  overflow: auto;
+}
+
+/* Both layers occupy the same cell: everything stays mounted (so every
+   registry id resolves), only one layer is visible and interactive. */
+.nx-stage {
+  display: grid;
+  grid-template-areas: "stage";
+  align-items: start;
+}
+
+.nx-layer {
+  grid-area: stage;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms ease;
+}
+
+.nx-layer.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ---------- cards ---------- */
+
+.nx-card {
+  background: var(--nx-panel);
+  border: 1px solid var(--nx-line);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.nx-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--nx-line-soft);
+}
+
+.nx-card-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nx-ink);
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+.nx-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--nx-line);
+  background: #f7f9fc;
+  color: var(--nx-ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.nx-chip--ok {
+  border-color: #a7ddc8;
+  background: #ecfdf5;
+  color: #0a6c4d;
+}
+
+/* ---------- register ---------- */
+
+.nx-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.nx-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--nx-panel);
+  border: 1px solid var(--nx-line);
+  border-radius: 10px;
+}
+
+.nx-metric-title {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--nx-ink-3);
+}
+
+.nx-metric-value {
+  font-size: 22px;
+  font-weight: 650;
+  color: var(--nx-ink);
+  line-height: 1.15;
+}
+
+.nx-metric-note {
+  font-size: 12px;
+  color: var(--nx-ink-2);
+}
+
+.nx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.nx-table th,
+.nx-table td {
+  padding: 9px 18px;
+  text-align: start;
+  border-bottom: 1px solid var(--nx-line-soft);
+}
+
+.nx-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--nx-ink-3);
+  font-weight: 600;
+  background: #fafbfd;
+}
+
+.nx-table .nx-num {
+  text-align: end;
+}
+
+.nx-mono {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12.5px;
+}
+
+.nx-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: #f2f4f7;
+  color: var(--nx-ink-2);
+}
+
+.nx-status--paid {
+  background: #eaf7f1;
+  color: #0a6c4d;
+}
+.nx-status--approved {
+  background: #eaf1fb;
+  color: #17457c;
+}
+.nx-status--pending {
+  background: #fdf4e3;
+  color: #8a5a06;
+}
+.nx-status--submitted {
+  background: #ecfdf5;
+  color: #0a6c4d;
+}
+
+.nx-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  color: var(--nx-ink-2);
+  font-size: 12.5px;
+}
+
+.nx-empty strong {
+  color: var(--nx-ink);
+  font-size: 13px;
+}
+
+.nx-empty p {
+  margin: 0;
+}
+
+.nx-empty-mark {
+  width: 16px;
+  height: 16px;
+  border: 1.5px dashed var(--nx-ink-3);
+  border-radius: 4px;
+}
+
+/* ---------- form ---------- */
+
+.nx-card--form {
+  max-width: 860px;
+}
+
+.nx-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+  padding: 18px;
+}
+
+.nx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.nx-field--wide {
+  grid-column: 1 / -1;
+}
+
+.nx-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nx-ink-2);
+}
+
+.nx-label-ar {
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--nx-ink-3);
+}
+
+.nx-hint {
+  font-size: 11.5px;
+  color: var(--nx-ink-3);
+}
+
+.nx-input-wrap {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--nx-line);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.nx-input-wrap:focus-within {
+  border-color: var(--nx-primary-2);
+  box-shadow: 0 0 0 3px rgba(29, 93, 166, 0.12);
+}
+
+.nx-affix {
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  background: #f7f9fc;
+  border-inline-end: 1px solid var(--nx-line);
+  color: var(--nx-ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.nx-affix--end {
+  border-inline-end: 0;
+  border-inline-start: 1px solid var(--nx-line);
+}
+
+.nx-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--nx-ink);
+  font: inherit;
+}
+
+.nx-input--area {
+  resize: none;
+  line-height: 1.45;
+}
+
+.nx-select-shell {
+  position: relative;
+}
+
+.nx-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--nx-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--nx-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.nx-select:hover,
+.nx-select.is-open {
+  border-color: var(--nx-primary-2);
+}
+
+.nx-select-ph {
+  color: var(--nx-ink-3);
+}
+
+.nx-caret {
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top-color: var(--nx-ink-3);
+  transform: translateY(2px);
+}
+
+.nx-menu {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--nx-line);
+  border-radius: 8px;
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.14);
+}
+
+.nx-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--nx-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.nx-option:hover {
+  background: #f1f5fb;
+}
+
+.nx-option.is-selected {
+  background: #eaf1fb;
+  font-weight: 600;
+}
+
+.nx-option-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.nx-option-ar {
+  font-size: 12px;
+  color: var(--nx-ink-3);
+}
+
+.nx-option-trn {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--nx-ink-3);
+  white-space: nowrap;
+}
+
+.nx-attach {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nx-file {
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--nx-line);
+  background: #f7f9fc;
+  font-size: 12px;
+  color: var(--nx-ink-2);
+}
+
+.nx-banner,
+.nx-notice {
+  margin: 14px 18px 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.nx-banner {
+  border: 1px solid #a7ddc8;
+  background: #ecfdf5;
+  color: #0a6c4d;
+}
+
+.nx-notice {
+  border: 1px solid #f2d8a8;
+  background: #fdf8ee;
+  color: #8a5a06;
+}
+
+.nx-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--nx-line-soft);
+  background: #fafbfd;
+  border-radius: 0 0 10px 10px;
+}
+
+.nx-actions-spacer {
+  flex: 1;
+  font-size: 12px;
+  color: var(--nx-ink-3);
+}
+
+/* ---------- buttons ---------- */
+
+.nx-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--nx-line);
+  background: #fff;
+  color: var(--nx-ink);
+  font: 600 13px/1.2 inherit;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.nx-btn:hover {
+  background: #f6f8fc;
+}
+
+.nx-btn--primary {
+  background: var(--nx-primary);
+  border-color: var(--nx-primary);
+  color: #fff;
+}
+
+.nx-btn--primary:hover {
+  background: var(--nx-primary-2);
+  border-color: var(--nx-primary-2);
+}
+
+.nx-btn--ghost {
+  background: #fff;
+  color: var(--nx-ink-2);
+}
+
+.nx-btn--danger {
+  background: #fff;
+  border-color: #f0c4c0;
+  color: var(--nx-danger);
+}
+
+.nx-btn--danger:hover {
+  background: #fdf2f1;
+}

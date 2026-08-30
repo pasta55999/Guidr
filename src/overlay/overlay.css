@@ -1,0 +1,110 @@
+/* Highlight overlay. Every layer is pointer-events: none — a highlight must
+   never be able to swallow a click meant for the element underneath it.
+   Physical (left/top) offsets only, so RTL behaves identically. */
+
+.ov-root,
+.ov-root * {
+  pointer-events: none !important;
+}
+
+.ov-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  overflow: hidden;
+  direction: ltr;
+}
+
+.ov-ring {
+  position: fixed;
+  border-radius: 12px;
+  border: 2px solid #f59f0a;
+  box-shadow:
+    0 0 0 3px rgba(245, 159, 10, 0.28),
+    0 0 22px 6px rgba(245, 159, 10, 0.25);
+  background: rgba(245, 159, 10, 0.08);
+  animation: ov-pulse 1.5s ease-in-out infinite;
+  will-change: box-shadow, transform;
+}
+
+.ov-ring-label {
+  position: absolute;
+  left: 0;
+  top: -24px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #111827;
+  color: #fff;
+  font: 600 11px/16px system-ui, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+
+@keyframes ov-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px rgba(245, 159, 10, 0.28),
+      0 0 22px 6px rgba(245, 159, 10, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px rgba(245, 159, 10, 0.16),
+      0 0 30px 12px rgba(245, 159, 10, 0.3);
+  }
+}
+
+.ov-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+}
+
+.ov-pointer {
+  position: absolute;
+  left: -3px;
+  top: -2px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.ov-ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 159, 10, 0.9);
+  opacity: 0;
+  /* forwards (not both): during the travel delay the ripple stays invisible. */
+  animation: ov-click 620ms ease-out 1 forwards;
+}
+
+@keyframes ov-click {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-ring {
+    animation: none;
+  }
+  .ov-ripple {
+    animation: none;
+    opacity: 0;
+  }
+  .ov-cursor {
+    transition: none !important;
+  }
+}

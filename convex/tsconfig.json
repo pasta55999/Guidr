@@ -6,6 +6,8 @@
     "module": "ESNext",
     "target": "ESNext",
     "lib": ["ES2021", "dom"],
+    // Convex functions read secrets from process.env (set via `npx convex env set`).
+    "types": ["node"],
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,

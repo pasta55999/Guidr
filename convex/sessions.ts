@@ -208,6 +208,21 @@ export const recordHint = mutation({
   },
 });
 
+/** Logged when the tutor grounds an answer in the ingested FTA guidance. */
+export const recordDocLookup = mutation({
+  args: { sessionId: v.id("sessions"), query: v.string() },
+  handler: async (ctx, { sessionId, query }) => {
+    const session = await ctx.db.get(sessionId);
+    if (!session) return;
+    await logEvent(ctx.db, {
+      sessionId,
+      stepIndex: session.currentStepIndex,
+      type: "doc_lookup",
+      detail: query.slice(0, 200),
+    });
+  },
+});
+
 /** Used by the token endpoint to refuse minting for unknown sessions. */
 export const exists = query({
   args: { sessionId: v.id("sessions") },

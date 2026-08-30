@@ -1,0 +1,213 @@
+/* Presentational tutor chrome (step tracker, status pill, mic button).
+   Explicit colours so the host page theme can't recolour the demo. */
+
+.ui-steps,
+.ui-pill,
+.ui-mic-wrap {
+  color-scheme: light;
+  font-family: system-ui, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: 0;
+  box-sizing: border-box;
+  text-align: start;
+}
+
+.ui-steps *,
+.ui-pill *,
+.ui-mic-wrap * {
+  box-sizing: border-box;
+}
+
+/* ---------- StepTracker ---------- */
+
+.ui-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #dfe3ea;
+  border-radius: 10px;
+  color: #0f172a;
+}
+
+.ui-steps-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ui-steps-count {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: #17457c;
+}
+
+.ui-steps-done {
+  color: #0a6c4d;
+  font-weight: 700;
+}
+
+.ui-steps-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ui-steps-title-ar {
+  font-size: 13.5px;
+  color: #4a5568;
+}
+
+.ui-bar {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #eceff4;
+  overflow: hidden;
+}
+
+.ui-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1d5da6, #0f766e);
+  transition: width 260ms ease;
+}
+
+.ui-steps-dots {
+  display: flex;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.ui-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #dfe3ea;
+}
+
+.ui-dot.is-done {
+  background: #0f766e;
+}
+
+.ui-dot.is-current {
+  background: #f59f0a;
+  box-shadow: 0 0 0 3px rgba(245, 159, 10, 0.22);
+}
+
+/* ---------- StatusPill ---------- */
+
+.ui-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid #dfe3ea;
+  background: #f7f9fc;
+  color: #4a5568;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ui-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ui-pill--live {
+  border-color: #a7ddc8;
+  background: #ecfdf5;
+  color: #0a6c4d;
+}
+
+.ui-pill--live .ui-pill-dot {
+  animation: ui-blink 1.4s ease-in-out infinite;
+}
+
+.ui-pill--connecting,
+.ui-pill--requesting-token,
+.ui-pill--reconnecting {
+  border-color: #f2d8a8;
+  background: #fdf8ee;
+  color: #8a5a06;
+}
+
+.ui-pill--error {
+  border-color: #f0c4c0;
+  background: #fdf2f1;
+  color: #b42318;
+}
+
+@keyframes ui-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* ---------- MicButton ---------- */
+
+.ui-mic-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.ui-mic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: #17457c;
+  color: #fff;
+  font: 600 15px/1.2 system-ui, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.16);
+}
+
+.ui-mic:hover:not(:disabled) {
+  background: #1d5da6;
+}
+
+.ui-mic:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ui-mic.is-live {
+  background: #b42318;
+  box-shadow:
+    0 2px 6px rgba(16, 24, 40, 0.16),
+    0 0 0 6px rgba(180, 35, 24, 0.14);
+}
+
+.ui-mic-note {
+  font-size: 11.5px;
+  color: #7a869a;
+  line-height: 1.35;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-pill--live .ui-pill-dot,
+  .ui-bar-fill {
+    animation: none;
+    transition: none;
+  }
+}

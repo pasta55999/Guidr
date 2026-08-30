@@ -1,0 +1,129 @@
+/* Dev harness styling for src/dev/Playground.tsx. Not shipped in the real app. */
+
+/* The host page centres #root at 1126px with a dark scheme; the playground wants
+   the full 1280x720 viewport and a light product surface. Scoped via :has so the
+   integration App is untouched. */
+#root:has(> .pg-root) {
+  width: 100%;
+  max-width: none;
+  border-inline: 0;
+  text-align: start;
+}
+
+.pg-root {
+  --pg-line: #dfe3ea;
+  color-scheme: light;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 288px 1fr;
+  gap: 14px;
+  height: 100svh;
+  padding: 12px;
+  background: #eef1f6;
+  color: #0f172a;
+  font: 400 13px/1.45 system-ui, "Segoe UI", Roboto, "Noto Sans Arabic",
+    sans-serif;
+  letter-spacing: 0;
+  overflow: hidden;
+}
+
+.pg-root *,
+.pg-root *::before,
+.pg-root *::after {
+  box-sizing: border-box;
+}
+
+.pg-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.pg-stage {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.pg-stage > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.pg-panel {
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--pg-line);
+  border-radius: 10px;
+}
+
+.pg-panel h3 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: #7a869a;
+}
+
+.pg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.pg-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pg-btn {
+  padding: 6px 9px;
+  border: 1px solid var(--pg-line);
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #0f172a;
+  font: 500 12px/1.2 inherit;
+  font-family: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.pg-btn:hover {
+  background: #eef2f8;
+}
+
+.pg-btn.is-on {
+  background: #17457c;
+  border-color: #17457c;
+  color: #fff;
+}
+
+.pg-btn--target {
+  border-inline-start: 3px solid #0f766e;
+}
+
+.pg-log {
+  margin: 0;
+  padding: 8px;
+  height: 132px;
+  overflow: auto;
+  background: #0f172a;
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  direction: ltr;
+}
+
+.pg-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #7a869a;
+}
