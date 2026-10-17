@@ -106,9 +106,13 @@ Convex env vars (`npx convex env set`). Never in `.env*`, never `VITE_`-prefixed
 that prefix inlines a value into the browser bundle. `.env*` is gitignored except
 `.env.example`. No secret is ever returned to the browser by any action.
 
-Optional overrides: `ANTHROPIC_MODEL` (default `claude-sonnet-5`; `claude-haiku-4-5-20251001`
-is the latency fallback), `MUNSIT_STT_MODEL` (default `munsit-en-ar`),
-`MUNSIT_VOICE_ID`, `MUNSIT_DIALECT` (default `emirati`).
+`ANTHROPIC_API_KEY` holds an **OpenRouter** key (`sk-or-v1-...`): `convex/tutor.ts` calls
+`https://openrouter.ai/api/v1/chat/completions`, not Anthropic directly.
+
+Optional overrides: `ANTHROPIC_MODEL` (OpenRouter model id; default
+`anthropic/claude-haiku-4.5` for latency and budget, `anthropic/claude-sonnet-4.5` for
+quality), `MUNSIT_STT_MODEL` (default `munsit-en-ar`), `MUNSIT_VOICE_ID` (default
+`ar-najdi-male-2`), `MUNSIT_DIALECT` (default `emirati`).
 
 Run `npx convex run speech:listVoices` to discover valid `voice_id` values.
 
