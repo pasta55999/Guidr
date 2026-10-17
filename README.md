@@ -2,6 +2,8 @@
 
 Guidr is a voice tutor that sits on top of a piece of workplace software and talks you through a task, one step at a time. You click the mic, say what you need in English, Arabic, or a mix of both, and Guidr explains what to do, points at the exact button or field on screen, and waits for you to actually do it before moving on.
 
+Here is a short recording of it in use: [watch the demo](docs/guidr-demo.mp4) (about a minute, with sound).
+
 Guidr is an early-stage project and currently a working prototype rather than a finished product. One lesson exists today: creating a supplier invoice inside a simulated accounts-payable dashboard called Nexus Finance. The internal codename is Clicky-UAE, which is why that name still shows up in the package name and a few config files.
 
 ## Why we built it
