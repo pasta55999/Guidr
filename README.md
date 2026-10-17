@@ -4,9 +4,7 @@ Guidr is a voice tutor that sits on top of a piece of workplace software and tal
 
 Here is a short recording of it in use (about a minute, with sound):
 
-<video src="https://github.com/pasta55999/Guidr/raw/main/docs/guidr-demo.mp4" controls width="720"></video>
-
-If the player does not appear, [open the video directly](docs/guidr-demo.mp4).
+https://github.com/pasta55999/Guidr/raw/main/docs/guidr-demo.mp4
 
 Guidr is an early-stage project and currently a working prototype rather than a finished product. One lesson exists today: creating a supplier invoice inside a simulated accounts-payable dashboard called Nexus Finance. The internal codename is Clicky-UAE, which is why that name still shows up in the package name and a few config files.
 
